@@ -1,0 +1,132 @@
+import queue
+import threading
+import traceback
+from models.platform_state import PlatformState, StepStatus, WORKFLOW_STEPS
+from utils.logger import make_log, LogEvent, StepStatusEvent
+
+import agents.repo_scanner_agent as repo_scanner_agent
+import agents.repo_analysis_agent as repo_analysis_agent
+import agents.repo_summary_agent as repo_summary_agent
+import agents.dependency_agent as dependency_agent
+import agents.infrastructure_agent as infrastructure_agent
+import agents.modernization_agent as modernization_agent
+import agents.cloud_selection_agent as cloud_selection_agent
+import agents.kubernetes_agent as kubernetes_agent
+import agents.terraform_agent as terraform_agent
+import agents.deployment_agent as deployment_agent
+import agents.cost_estimation_agent as cost_estimation_agent
+
+
+STEP_AGENTS = [
+    ("scan",           repo_scanner_agent),
+    ("analyze",        repo_analysis_agent),
+    ("summarize",      repo_summary_agent),
+    ("dependencies",   dependency_agent),
+    ("infrastructure", infrastructure_agent),
+    ("modernization",  modernization_agent),
+    ("cloud",          cloud_selection_agent),
+    ("kubernetes",     kubernetes_agent),
+    ("terraform",      terraform_agent),
+    ("bundle",         None),
+    ("provision",      None),
+    ("deploy",         None),
+    ("validate",       None),
+    ("cost",           cost_estimation_agent),
+]
+
+DEPLOYMENT_STEPS = {"bundle", "provision", "deploy", "validate"}
+
+
+class _StepQueue:
+    """Wraps the main queue and tags all LogEvents with the current step_id."""
+    def __init__(self, main_queue: queue.Queue, step_id: str):
+        self._q = main_queue
+        self._step_id = step_id
+
+    def put(self, event):
+        if isinstance(event, LogEvent) and event.step_id is None:
+            event.step_id = self._step_id
+        self._q.put(event)
+
+    def empty(self):
+        return self._q.empty()
+
+    def get_nowait(self):
+        return self._q.get_nowait()
+
+
+class WorkflowEngine:
+    def __init__(self):
+        self.log_queue: queue.Queue = queue.Queue()
+        self._thread: threading.Thread = None
+
+    def start(self, state: PlatformState) -> PlatformState:
+        state.workflow_running = True
+        state.workflow_complete = False
+        state.workflow_error = None
+        self._thread = threading.Thread(
+            target=self._run,
+            args=(state,),
+            daemon=True,
+        )
+        self._thread.start()
+        return state
+
+    def _run(self, state: PlatformState):
+        deployment_done = False
+
+        for step_id, agent in STEP_AGENTS:
+            step_q = _StepQueue(self.log_queue, step_id)
+            try:
+                state.step_statuses[step_id] = StepStatus.RUNNING
+                self.log_queue.put(StepStatusEvent(step_id=step_id, status=StepStatus.RUNNING))
+
+                if step_id in DEPLOYMENT_STEPS:
+                    if not deployment_done:
+                        for ds in ["bundle", "provision", "deploy", "validate"]:
+                            state.step_statuses[ds] = StepStatus.RUNNING
+                            self.log_queue.put(StepStatusEvent(step_id=ds, status=StepStatus.RUNNING))
+
+                        deploy_q = _StepQueue(self.log_queue, "bundle")
+                        state = deployment_agent.run(state, deploy_q)
+                        deployment_done = True
+
+                        for ds in ["bundle", "provision", "deploy", "validate"]:
+                            state.step_statuses[ds] = StepStatus.COMPLETED
+                            self.log_queue.put(StepStatusEvent(step_id=ds, status=StepStatus.COMPLETED))
+                    continue
+
+                if agent is not None:
+                    state = agent.run(state, step_q)
+
+                state.step_statuses[step_id] = StepStatus.COMPLETED
+                self.log_queue.put(StepStatusEvent(step_id=step_id, status=StepStatus.COMPLETED))
+
+            except Exception as e:
+                error_msg = traceback.format_exc()
+                state.step_statuses[step_id] = StepStatus.FAILED
+                self.log_queue.put(StepStatusEvent(step_id=step_id, status=StepStatus.FAILED))
+                step_q.put(make_log("System", f"ERROR: {str(e)}", "error"))
+                step_q.put(make_log("System", error_msg[:1000], "error"))
+                state.workflow_error = error_msg
+                break
+
+        state.workflow_running = False
+        state.workflow_complete = True
+        self.log_queue.put(make_log("System", "Workflow complete ✔", "success"))
+
+
+_engine_instance: WorkflowEngine = None
+
+
+def get_engine() -> WorkflowEngine:
+    global _engine_instance
+    if _engine_instance is None:
+        _engine_instance = WorkflowEngine()
+    return _engine_instance
+
+
+def reset_engine():
+    global _engine_instance
+    _engine_instance = WorkflowEngine()
+    return _engine_instance

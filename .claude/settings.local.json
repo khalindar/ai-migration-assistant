@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pkill:*)",
+      "Bash(source:*)",
+      "Bash(docker build:*)"
+    ]
+  }
+}
