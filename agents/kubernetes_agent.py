@@ -5,20 +5,18 @@ from utils.logger import make_log
 
 
 SYSTEM = """You are a Kubernetes expert. Generate production-ready Kubernetes YAML manifests.
-Return a JSON object where keys are service names and values are the complete YAML string for that service.
-Include Deployment, Service, and where appropriate HorizontalPodAutoscaler.
-Format:
+Return a JSON object in exactly this format. YAML values must use \\n for newlines (no literal newlines inside JSON strings).
+Do NOT include cloud-provider-specific annotations or CRDs — use only standard Kubernetes resources.
 {
   "services": ["ServiceA", "ServiceB"],
   "manifests": {
-    "ServiceA": "apiVersion: apps/v1\\nkind: Deployment\\n...",
-    "ServiceB": "apiVersion: apps/v1\\nkind: Deployment\\n...",
-    "ingress": "apiVersion: networking.k8s.io/v1\\nkind: Ingress\\n..."
+    "ServiceA": "apiVersion: apps/v1\\nkind: Deployment\\nmetadata:\\n  name: servicea\\n  namespace: app-production\\nspec:\\n  replicas: 2\\n  selector:\\n    matchLabels:\\n      app: servicea\\n  template:\\n    metadata:\\n      labels:\\n        app: servicea\\n    spec:\\n      containers:\\n      - name: servicea\\n        image: servicea:latest\\n        ports:\\n        - containerPort: 8080",
+    "ingress": "apiVersion: networking.k8s.io/v1\\nkind: Ingress\\nmetadata:\\n  name: app-ingress\\n  namespace: app-production\\nspec:\\n  rules:\\n  - http:\\n      paths:\\n      - path: /\\n        pathType: Prefix\\n        backend:\\n          service:\\n            name: servicea\\n            port:\\n              number: 80"
   },
   "namespace": "app-production",
   "cluster_type": "EKS or GKE"
 }
-Return only valid JSON."""
+Return only valid JSON, no markdown fences."""
 
 
 def run(state: PlatformState, log_queue: queue.Queue) -> PlatformState:
@@ -43,7 +41,20 @@ Include resource limits, liveness/readiness probes, and environment variable pla
 
     from utils.json_parser import extract_json
     raw = complete("kubernetes_agent", SYSTEM, [{"role": "user", "content": prompt}], max_tokens=8096)
-    data = extract_json(raw, fallback={"manifests": {}, "services": services})
+    fallback_manifests = {
+        svc: (
+            f"apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: {svc.lower()}\n"
+            f"  namespace: app-production\nspec:\n  replicas: 2\n  selector:\n"
+            f"    matchLabels:\n      app: {svc.lower()}\n  template:\n    metadata:\n"
+            f"      labels:\n        app: {svc.lower()}\n    spec:\n      containers:\n"
+            f"      - name: {svc.lower()}\n        image: {svc.lower()}:latest\n"
+            f"        ports:\n        - containerPort: 8080"
+        )
+        for svc in services[:4]
+    }
+    data = extract_json(raw, fallback={"manifests": fallback_manifests, "services": services})
+    if not data.get("manifests"):
+        data["manifests"] = fallback_manifests
 
     state.kubernetes_manifests = data
     manifest_count = len(data.get("manifests", {}))

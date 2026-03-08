@@ -55,8 +55,6 @@ def _sanitize(s: str) -> str:
     """Fix common JSON issues from LLM output."""
     # Remove trailing commas before } or ]
     s = re.sub(r",\s*([}\]])", r"\1", s)
-    # Replace single quotes used as string delimiters (simple cases)
-    # Remove comments
-    s = re.sub(r"//.*?\n", "\n", s)
-    s = re.sub(r"/\*.*?\*/", "", s, flags=re.DOTALL)
+    # NOTE: Do NOT strip // or /* */ comments — they appear inside YAML/URL strings
+    # embedded in JSON values and stripping them corrupts valid JSON content.
     return s

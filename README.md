@@ -31,49 +31,76 @@ AI Cloud Migration Assistant uses a **multi-agent architecture** where 11 specia
 6. Estimate monthly and annual costs
 7. Answer follow-up questions via an AI Q&A agent
 
-The system runs entirely on a laptop with **Safe Mode** enabled — no real cloud resources are ever created during demos.
+The system runs entirely with **Safe Mode** enabled by default — no real cloud resources are ever created during demos. (Due to Cost Implications), however the Agent can also trigger Terraform and create the cloud resources if needed. 
 
 ---
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Streamlit UI (app.py)                  │
-│  ┌──────────┐ ┌────────────┐ ┌──────┐ ┌──────┐ ┌────────┐  │
-│  │Dashboard │ │ Deployment │ │ Q&A  │ │Infra │ │  Cost  │  │
-│  └────┬─────┘ └─────┬──────┘ └──┬───┘ └──┬───┘ └───┬────┘  │
-└───────┼─────────────┼───────────┼─────────┼─────────┼───────┘
-        │             │           │         │         │
-        ▼             │           │         │         │
-┌───────────────┐     │     ┌─────▼──────┐  │         │
-│WorkflowEngine │     │     │  QA Agent  │  │         │
-│(Background    │     │     │ (Agent SDK │  │         │
-│ Thread)       │     │     │  + Tools)  │  │         │
-└───────┬───────┘     │     └────────────┘  │         │
-        │             │                     │         │
-        ▼             │     ┌───────────────▼─────────▼───┐
-┌───────────────┐     │     │         PlatformState        │
-│  Log Queue    │     └────►│    (Pydantic — session_state)│
-│ (queue.Queue) │           └─────────────────────────────┘
-└───────┬───────┘
-        │
-        ▼
-┌───────────────────────────────────────────────────────────┐
-│                    14-Step Agent Pipeline                  │
-│                                                           │
-│  Step 1  RepoScannerAgent      (claude-sonnet-4-6)        │
-│  Step 2  RepoAnalysisAgent     (claude-sonnet-4-6)        │
-│  Step 3  RepoSummaryAgent      (claude-sonnet-4-6)        │
-│  Step 4  DependencyAgent       (claude-sonnet-4-6)        │
-│  Step 5  InfrastructureAgent   (claude-sonnet-4-6)        │
-│  Step 6  ModernizationAgent    (claude-opus-4-6)  ◄─ Opus │
-│  Step 7  CloudSelectionAgent   (logic only)               │
-│  Step 8  KubernetesAgent       (claude-sonnet-4-6)        │
-│  Step 9  TerraformAgent        (claude-sonnet-4-6)        │
-│  Steps 10-13 DeploymentAgent   (executors)                │
-│  Step 14 CostEstimationAgent   (claude-sonnet-4-6)        │
-└───────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph UI["🖥️ Streamlit UI (app.py)"]
+        direction LR
+        D["🎯 Dashboard"]
+        DV["🚀 Deployment"]
+        QA["💬 Q&A"]
+        IV["🏛️ Infrastructure"]
+        CV["💰 Cost"]
+    end
+
+    subgraph Core["⚙️ Core Services"]
+        WE["WorkflowEngine\n(Background Thread)"]
+        LQ["Log Queue\n(queue.Queue)"]
+        PS["PlatformState\n(Pydantic · session_state)"]
+    end
+
+    subgraph QAService["🤖 Q&A Agent"]
+        QAA["ArchitectureQAAgent\nClaude Opus + 7 Tools"]
+    end
+
+    subgraph Pipeline["🔄 14-Step Agent Pipeline"]
+        direction LR
+        subgraph Analysis["📊 Analysis  (Steps 1–6)"]
+            S1["1 · RepoScanner\nSonnet"]
+            S2["2 · RepoAnalysis\nSonnet"]
+            S3["3 · RepoSummary\nSonnet"]
+            S4["4 · Dependency\nSonnet"]
+            S5["5 · Infrastructure\nSonnet"]
+            S6["6 · Modernization\n⭐ Opus"]
+        end
+        subgraph Generation["⚡ Generation  (Steps 7–9)"]
+            S7["7 · CloudSelection\nLogic"]
+            S8["8 · Kubernetes\nSonnet"]
+            S9["9 · Terraform\nSonnet"]
+        end
+        subgraph Deployment["🚀 Deployment  (Steps 10–14)"]
+            S10["10 · Bundle\nExecutor"]
+            S11["11 · Provision\nExecutor"]
+            S12["12 · Deploy\nExecutor"]
+            S13["13 · Validate\nExecutor"]
+            S14["14 · Cost\nSonnet"]
+        end
+        Analysis --> Generation --> Deployment
+    end
+
+    D -->|start| WE
+    WE --> LQ
+    LQ -->|poll 300ms| D
+    WE --> Pipeline
+    Pipeline --> PS
+    PS --> DV & IV & CV
+    QA --> QAAService
+    QAService --> PS
+
+    style S6 fill:#6b46c1,color:#fff
+    style QAA fill:#6b46c1,color:#fff
+    style UI fill:#0d2137,color:#e2e8f0,stroke:#00d4ff
+    style Core fill:#0a1628,color:#e2e8f0,stroke:#30363d
+    style Pipeline fill:#0a1628,color:#e2e8f0,stroke:#30363d
+    style Analysis fill:#0d1f3c,color:#e2e8f0,stroke:#2d3a6b
+    style Generation fill:#0d1f3c,color:#e2e8f0,stroke:#2d3a6b
+    style Deployment fill:#0d1f3c,color:#e2e8f0,stroke:#2d3a6b
+    style QAService fill:#1a0d2e,color:#e2e8f0,stroke:#6b46c1
 ```
 
 ---

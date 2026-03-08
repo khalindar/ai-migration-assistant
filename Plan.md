@@ -118,6 +118,17 @@ utils/
 - `total_monthly` metric and the line-item subtotal always match: both are derived by summing `line_items[].monthly_cost` — Claude's `total_monthly` field is ignored to avoid discrepancies between the header metric and the table subtotal
 - `total_annual` falls back to `total_monthly * 12` if not returned by the agent
 
+### Provider-Aware Agent Prompts
+- All agents that reference cloud services use explicit AWS vs GCP service names in their SYSTEM prompts so Claude generates provider-correct output for both clouds
+- `InfrastructureAgent`: SYSTEM prompt lists AWS (EKS, RDS, ElastiCache, ALB, SQS, S3) and GCP (GKE, Cloud SQL, Memorystore, Cloud Load Balancing, Pub/Sub, Cloud Storage) resources; provider-correct fallback resources used if JSON extraction fails
+- `KubernetesAgent`: SYSTEM prompt instructs Claude to use only standard Kubernetes resources (no cloud-specific CRDs/annotations) to keep embedded YAML JSON-safe; per-service fallback Deployments generated if parsing fails
+- `CostEstimationAgent`: SYSTEM prompt lists both AWS and GCP service names; `_fallback_cost(provider)` returns provider-correct line items (GCP: GKE, Cloud SQL, Memorystore; AWS: EKS, RDS, ElastiCache)
+- `CostEstimationAgent`: resource dict access uses `.get()` to avoid `KeyError` on malformed resource dicts
+
+### JSON Parser
+- `utils/json_parser.py` uses 4 strategies: direct parse → strip markdown fences → brace-depth walk → sanitize trailing commas
+- `_sanitize` does NOT strip `//` or `/* */` comments — these patterns appear inside YAML strings and URLs embedded in JSON values and stripping them corrupts valid content
+
 ### Token Limits
 - Modernization, Kubernetes, Terraform agents use `max_tokens=8096`
 - TerraformAgent returns raw HCL directly (not JSON-wrapped) to avoid parsing failures
