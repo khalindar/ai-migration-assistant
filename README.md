@@ -37,44 +37,43 @@ The system runs entirely with **Safe Mode** enabled by default — no real cloud
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    classDef input   fill:#1e3a5f,stroke:#4a9ede,stroke-width:2px,color:#ffffff
-    classDef engine  fill:#2d1b4e,stroke:#9f7aea,stroke-width:2px,color:#ffffff
-    classDef output  fill:#1a3a2a,stroke:#48bb78,stroke-width:2px,color:#ffffff
-    classDef qa      fill:#3d2a0a,stroke:#f6ad55,stroke-width:2px,color:#ffffff
-
-    REPO(["📦 GitHub Repository\n─────────────────\nAny public repo URL"]):::input
-
-    subgraph ENGINE["🤖  Claude AI Engine  —  14-Step Automated Pipeline"]
-        direction LR
-        E1["🔍 Analyse\nRepository"]
-        E2["🏗️ Design Cloud\nArchitecture"]
-        E3["⚙️ Generate\nInfra Code"]
-        E4["🚀 Simulate\nDeployment"]
-        E1 --> E2 --> E3 --> E4
-    end
-
-    subgraph OUTPUTS["📊  Generated Outputs"]
-        direction TB
-        O1["📐 Architecture\nDiagram"]:::output
-        O2["☸️ Kubernetes\nManifests"]:::output
-        O3["🏗️ Terraform\nCode"]:::output
-        O4["💰 Cost\nEstimation"]:::output
-    end
-
-    QA(["💬 AI Q&A Assistant\n──────────────────\nAsk anything · Claude Opus\nInstant contextual answers"]):::qa
-
-    REPO -->|"① Paste URL\n& select cloud"| ENGINE
-    ENGINE -->|"② Auto-generates\nin minutes"| OUTPUTS
-    OUTPUTS -->|"③ Explore &\nask questions"| QA
-
-    style ENGINE fill:#0d1117,stroke:#4a5568,stroke-width:1px,color:#e2e8f0
-    style OUTPUTS fill:#0d1117,stroke:#4a5568,stroke-width:1px,color:#e2e8f0
-    style E1 fill:#1a2744,stroke:#4a9ede,color:#e2e8f0
-    style E2 fill:#1a2744,stroke:#4a9ede,color:#e2e8f0
-    style E3 fill:#1a2744,stroke:#4a9ede,color:#e2e8f0
-    style E4 fill:#1a2744,stroke:#4a9ede,color:#e2e8f0
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Streamlit UI (app.py)                  │
+│  ┌──────────┐ ┌────────────┐ ┌──────┐ ┌──────┐ ┌────────┐  │
+│  │Dashboard │ │ Deployment │ │ Q&A  │ │Infra │ │  Cost  │  │
+│  └────┬─────┘ └─────┬──────┘ └──┬───┘ └──┬───┘ └───┬────┘  │
+└───────┼─────────────┼───────────┼─────────┼─────────┼───────┘
+        │             │           │         │         │
+        ▼             │           │         │         │
+┌───────────────┐     │     ┌─────▼──────┐  │         │
+│WorkflowEngine │     │     │  QA Agent  │  │         │
+│(Background    │     │     │ (Agent SDK │  │         │
+│ Thread)       │     │     │  + Tools)  │  │         │
+└───────┬───────┘     │     └────────────┘  │         │
+        │             │                     │         │
+        ▼             │     ┌───────────────▼─────────▼───┐
+┌───────────────┐     │     │         PlatformState        │
+│  Log Queue    │     └────►│    (Pydantic — session_state)│
+│ (queue.Queue) │           └─────────────────────────────┘
+└───────┬───────┘
+        │
+        ▼
+┌───────────────────────────────────────────────────────────┐
+│                    14-Step Agent Pipeline                  │
+│                                                           │
+│  Step 1  RepoScannerAgent      (claude-sonnet-4-6)        │
+│  Step 2  RepoAnalysisAgent     (claude-sonnet-4-6)        │
+│  Step 3  RepoSummaryAgent      (claude-sonnet-4-6)        │
+│  Step 4  DependencyAgent       (claude-sonnet-4-6)        │
+│  Step 5  InfrastructureAgent   (claude-sonnet-4-6)        │
+│  Step 6  ModernizationAgent    (claude-opus-4-6)  ◄─ Opus │
+│  Step 7  CloudSelectionAgent   (logic only)               │
+│  Step 8  KubernetesAgent       (claude-sonnet-4-6)        │
+│  Step 9  TerraformAgent        (claude-sonnet-4-6)        │
+│  Steps 10-13 DeploymentAgent   (executors)                │
+│  Step 14 CostEstimationAgent   (claude-sonnet-4-6)        │
+└───────────────────────────────────────────────────────────┘
 ```
 
 ---
