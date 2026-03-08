@@ -38,69 +38,43 @@ The system runs entirely with **Safe Mode** enabled by default — no real cloud
 ## Architecture
 
 ```mermaid
-flowchart TD
-    subgraph UI["🖥️ Streamlit UI (app.py)"]
+flowchart LR
+    classDef input   fill:#1e3a5f,stroke:#4a9ede,stroke-width:2px,color:#ffffff
+    classDef engine  fill:#2d1b4e,stroke:#9f7aea,stroke-width:2px,color:#ffffff
+    classDef output  fill:#1a3a2a,stroke:#48bb78,stroke-width:2px,color:#ffffff
+    classDef qa      fill:#3d2a0a,stroke:#f6ad55,stroke-width:2px,color:#ffffff
+
+    REPO(["📦 GitHub Repository\n─────────────────\nAny public repo URL"]):::input
+
+    subgraph ENGINE["🤖  Claude AI Engine  —  14-Step Automated Pipeline"]
         direction LR
-        D["🎯 Dashboard"]
-        DV["🚀 Deployment"]
-        QA["💬 Q&A"]
-        IV["🏛️ Infrastructure"]
-        CV["💰 Cost"]
+        E1["🔍 Analyse\nRepository"]
+        E2["🏗️ Design Cloud\nArchitecture"]
+        E3["⚙️ Generate\nInfra Code"]
+        E4["🚀 Simulate\nDeployment"]
+        E1 --> E2 --> E3 --> E4
     end
 
-    subgraph Core["⚙️ Core Services"]
-        WE["WorkflowEngine\n(Background Thread)"]
-        LQ["Log Queue\n(queue.Queue)"]
-        PS["PlatformState\n(Pydantic · session_state)"]
+    subgraph OUTPUTS["📊  Generated Outputs"]
+        direction TB
+        O1["📐 Architecture\nDiagram"]:::output
+        O2["☸️ Kubernetes\nManifests"]:::output
+        O3["🏗️ Terraform\nCode"]:::output
+        O4["💰 Cost\nEstimation"]:::output
     end
 
-    subgraph QAService["🤖 Q&A Agent"]
-        QAA["ArchitectureQAAgent\nClaude Opus + 7 Tools"]
-    end
+    QA(["💬 AI Q&A Assistant\n──────────────────\nAsk anything · Claude Opus\nInstant contextual answers"]):::qa
 
-    subgraph Pipeline["🔄 14-Step Agent Pipeline"]
-        direction LR
-        subgraph Analysis["📊 Analysis  (Steps 1–6)"]
-            S1["1 · RepoScanner\nSonnet"]
-            S2["2 · RepoAnalysis\nSonnet"]
-            S3["3 · RepoSummary\nSonnet"]
-            S4["4 · Dependency\nSonnet"]
-            S5["5 · Infrastructure\nSonnet"]
-            S6["6 · Modernization\n⭐ Opus"]
-        end
-        subgraph Generation["⚡ Generation  (Steps 7–9)"]
-            S7["7 · CloudSelection\nLogic"]
-            S8["8 · Kubernetes\nSonnet"]
-            S9["9 · Terraform\nSonnet"]
-        end
-        subgraph Deployment["🚀 Deployment  (Steps 10–14)"]
-            S10["10 · Bundle\nExecutor"]
-            S11["11 · Provision\nExecutor"]
-            S12["12 · Deploy\nExecutor"]
-            S13["13 · Validate\nExecutor"]
-            S14["14 · Cost\nSonnet"]
-        end
-        Analysis --> Generation --> Deployment
-    end
+    REPO -->|"① Paste URL\n& select cloud"| ENGINE
+    ENGINE -->|"② Auto-generates\nin minutes"| OUTPUTS
+    OUTPUTS -->|"③ Explore &\nask questions"| QA
 
-    D -->|start| WE
-    WE --> LQ
-    LQ -->|poll 300ms| D
-    WE --> Pipeline
-    Pipeline --> PS
-    PS --> DV & IV & CV
-    QA --> QAAService
-    QAService --> PS
-
-    style S6 fill:#6b46c1,color:#fff
-    style QAA fill:#6b46c1,color:#fff
-    style UI fill:#0d2137,color:#e2e8f0,stroke:#00d4ff
-    style Core fill:#0a1628,color:#e2e8f0,stroke:#30363d
-    style Pipeline fill:#0a1628,color:#e2e8f0,stroke:#30363d
-    style Analysis fill:#0d1f3c,color:#e2e8f0,stroke:#2d3a6b
-    style Generation fill:#0d1f3c,color:#e2e8f0,stroke:#2d3a6b
-    style Deployment fill:#0d1f3c,color:#e2e8f0,stroke:#2d3a6b
-    style QAService fill:#1a0d2e,color:#e2e8f0,stroke:#6b46c1
+    style ENGINE fill:#0d1117,stroke:#4a5568,stroke-width:1px,color:#e2e8f0
+    style OUTPUTS fill:#0d1117,stroke:#4a5568,stroke-width:1px,color:#e2e8f0
+    style E1 fill:#1a2744,stroke:#4a9ede,color:#e2e8f0
+    style E2 fill:#1a2744,stroke:#4a9ede,color:#e2e8f0
+    style E3 fill:#1a2744,stroke:#4a9ede,color:#e2e8f0
+    style E4 fill:#1a2744,stroke:#4a9ede,color:#e2e8f0
 ```
 
 ---
@@ -258,7 +232,7 @@ sequenceDiagram
 ## Project Structure
 
 ```
-ai-platform-architect/
+ai-migration-assistant/
 │
 ├── app.py                          # Entry point: Streamlit config, CSS, sidebar nav, page routing
 │
@@ -410,8 +384,8 @@ Every completed step exposes download buttons directly on the dashboard card:
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-username/ai-platform-architect
-cd ai-platform-architect
+git clone https://github.com/khalindar/ai-migration-assistant
+cd ai-migration-assistant
 
 # Create virtual environment
 uv venv .venv --python 3.14
