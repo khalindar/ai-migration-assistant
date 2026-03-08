@@ -1,43 +1,14 @@
-import time
+import queue as _queue
 import streamlit as st
 import streamlit.components.v1 as components
 from models.platform_state import PlatformState, WORKFLOW_STEPS, StepStatus
+from utils.logger import LogEvent, StepStatusEvent
 from services.workflow_engine import get_engine, reset_engine
 from ui.workflow_visualizer import (
-    render_step_cards, render_progress_bar, drain_queue_and_refresh,
-    render_artifact_content, ARTIFACT_LABELS,
+    render_step_cards, render_progress_bar,
+    render_artifact_content, render_inline_logs, ARTIFACT_LABELS,
+    STATUS_CONFIG, MODEL_COLORS, _render_action_buttons, _step_outcome_summary,
 )
-
-CLOUD_RECOMMENDATIONS = {
-    True: {
-        "provider": "GCP",
-        "color": "#34a853",
-        "icon": "☁️",
-        "headline": "Google Cloud Platform — Strongly Recommended",
-        "reasons": [
-            "LUMI integration requires native GCP service connectivity (VPC peering, Shared VPC)",
-            "GKE (Google Kubernetes Engine) provides seamless workload identity for LUMI service accounts",
-            "Cloud SQL and Memorystore are co-located with LUMI's data residency requirements",
-            "Anthos Service Mesh enables zero-trust communication between your app and LUMI endpoints",
-            "Lower egress cost when traffic stays within the same Google Cloud backbone",
-        ],
-        "caution": None,
-    },
-    False: {
-        "provider": "AWS",
-        "color": "#ff9900",
-        "icon": "☁️",
-        "headline": "Amazon Web Services — Strongly Recommended",
-        "reasons": [
-            "AWS has the broadest managed service portfolio — EKS, RDS, ElastiCache, SQS all production-proven",
-            "Largest global region footprint gives lowest latency for most enterprise deployments",
-            "AWS Organizations + IAM provides enterprise-grade multi-account governance out of the box",
-            "Cost tooling (Cost Explorer, Savings Plans) gives strongest FinOps control",
-            "No LUMI dependency means no GCP-specific networking requirements to satisfy",
-        ],
-        "caution": "If LUMI dependency is added later, cross-cloud networking will require VPN or Interconnect.",
-    },
-}
 
 
 # ── Artifact modal — defined at module level so @st.dialog registers correctly ──
@@ -46,17 +17,56 @@ def _show_artifact_modal(state: PlatformState):
     step_id = st.session_state.get("active_artifact", "")
     label = ARTIFACT_LABELS.get(step_id, step_id.title())
 
-    st.markdown(
-        f'<div style="color:#00d4ff;font-size:17px;font-weight:800;margin-bottom:16px;">'
-        f'{label}</div>',
-        unsafe_allow_html=True,
-    )
+    title_col, close_col = st.columns([5, 1])
+    with title_col:
+        st.markdown(
+            f'<div style="color:#00d4ff;font-size:17px;font-weight:800;margin-bottom:4px;">'
+            f'{label}</div>',
+            unsafe_allow_html=True,
+        )
+    with close_col:
+        if st.button("✕ Close", key="dialog_close_top", use_container_width=True, type="primary"):
+            st.session_state.active_artifact = None
+            st.rerun()
 
+    st.divider()
     render_artifact_content(step_id, state)
-
     st.markdown("<br/>", unsafe_allow_html=True)
-    if st.button("✕  Close", use_container_width=True):
+    if st.button("✕  Close", key="dialog_close_bottom", use_container_width=True):
         st.session_state.active_artifact = None
+        st.rerun()
+
+
+# ── Polling fragment — auto-reruns every 300ms without a full page rerun ──
+# This eliminates page flicker: only the fragment's DOM area is updated each poll.
+@st.fragment(run_every=0.3)
+def _live_polling_fragment():
+    engine = st.session_state.get("engine")
+    state: PlatformState = st.session_state.get("platform_state")
+    if not engine or not state:
+        return
+
+    step_logs = st.session_state.get("step_logs", {})
+
+    # Drain queue unless a dialog is open
+    if not st.session_state.get("active_artifact"):
+        while not engine.log_queue.empty():
+            try:
+                event = engine.log_queue.get_nowait()
+                if isinstance(event, StepStatusEvent):
+                    state.step_statuses[event.step_id] = event.status
+                elif isinstance(event, LogEvent):
+                    sid = event.step_id or "system"
+                    step_logs.setdefault(sid, []).append(event)
+            except _queue.Empty:
+                break
+        st.session_state.step_logs = step_logs
+
+    render_progress_bar(state)
+    render_step_cards(state, step_logs, show_actions=True)
+
+    # Trigger full page rerun when workflow completes → shows completion view
+    if state.workflow_complete:
         st.rerun()
 
 
@@ -70,7 +80,6 @@ def render():
 
     state: PlatformState = st.session_state.platform_state
 
-    # Open artifact modal if requested (works on both complete and polling states)
     if st.session_state.get("active_artifact") and (state.workflow_running or state.workflow_complete):
         _show_artifact_modal(state)
 
@@ -101,61 +110,61 @@ def _render_input_panel(state: PlatformState):
         value=True,
     )
 
-    # ── LUMI Question ──────────────────────────────────────────
+    # ── Cloud Provider Selection ────────────────────────────────
     st.markdown("""
-    <div style="background:#1a1f2e;border:1px solid #2d3748;border-left:4px solid #f6ad55;
-                border-radius:8px;padding:14px 16px;margin:20px 0 8px 0;">
-        <div style="color:#f6ad55;font-weight:700;font-size:14px;margin-bottom:4px;">
-            Cloud Provider Selection
+    <div style="background:#1a1f2e;border:1px solid #2d3748;border-left:4px solid #00d4ff;
+                border-radius:8px;padding:14px 16px;margin:20px 0 12px 0;">
+        <div style="color:#00d4ff;font-weight:700;font-size:14px;margin-bottom:4px;">
+            Target Cloud Provider
         </div>
         <div style="color:#a0aec0;font-size:13px;">
-            Does this application have any dependency with
-            <strong style="color:#fff;">LUMI</strong>
-            or any internal services that require GCP?
+            Select the cloud platform to migrate this application to
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    lumi_choice = st.radio(
-        "LUMI dependency",
-        options=["Yes — this app depends on LUMI / GCP services",
-                 "No — this app has no LUMI or GCP dependencies"],
-        index=None,
-        label_visibility="collapsed",
-        horizontal=True,
-    )
+    saved_provider = st.session_state.get("selected_cloud_provider", None)
 
-    lumi_dep = None
-    if lumi_choice is not None:
-        lumi_dep = lumi_choice.startswith("Yes")
-        st.session_state.lumi_dependency = lumi_dep
-
-    if lumi_dep is None:
-        lumi_dep = st.session_state.get("lumi_dependency", None)
-
-    # ── Recommendation card ────────────────────────────────────
-    if lumi_dep is not None:
-        rec = CLOUD_RECOMMENDATIONS[lumi_dep]
-        color = rec["color"]
+    col_aws, col_gcp = st.columns(2)
+    with col_aws:
+        aws_selected = saved_provider == "AWS"
+        aws_border = "border:2px solid #ff9900;" if aws_selected else "border:1px solid #30363d;"
         st.markdown(
-            f'<div style="border-left:4px solid {color};background:#0d1a0d;'
-            f'border-radius:8px;padding:14px 18px;margin:12px 0;">'
-            f'<span style="color:{color};font-weight:800;font-size:15px;">'
-            f'{rec["icon"]} {rec["headline"]}</span></div>',
+            f'<div style="background:#161b22;{aws_border}border-radius:10px;padding:16px;text-align:center;">'
+            f'<div style="font-size:28px;">☁️</div>'
+            f'<div style="color:#ff9900;font-size:16px;font-weight:800;margin-top:6px;">AWS</div>'
+            f'<div style="color:#718096;font-size:11px;margin-top:4px;">Amazon Web Services</div>'
+            f'<div style="color:#a0aec0;font-size:11px;margin-top:6px;">EKS · RDS · ElastiCache · SQS</div>'
+            f'</div>',
             unsafe_allow_html=True,
         )
-        for reason in rec["reasons"]:
-            st.markdown(
-                f'<div style="color:#b7d9b7;font-size:13px;padding:3px 0 3px 18px;">'
-                f'✓ &nbsp;{reason}</div>',
-                unsafe_allow_html=True,
-            )
-        if rec.get("caution"):
-            st.warning(f"⚠ {rec['caution']}")
+        if st.button("Select AWS", key="btn_aws", use_container_width=True,
+                     type="primary" if aws_selected else "secondary"):
+            st.session_state.selected_cloud_provider = "AWS"
+            st.rerun()
+
+    with col_gcp:
+        gcp_selected = saved_provider == "GCP"
+        gcp_border = "border:2px solid #34a853;" if gcp_selected else "border:1px solid #30363d;"
+        st.markdown(
+            f'<div style="background:#161b22;{gcp_border}border-radius:10px;padding:16px;text-align:center;">'
+            f'<div style="font-size:28px;">☁️</div>'
+            f'<div style="color:#34a853;font-size:16px;font-weight:800;margin-top:6px;">GCP</div>'
+            f'<div style="color:#718096;font-size:11px;margin-top:4px;">Google Cloud Platform</div>'
+            f'<div style="color:#a0aec0;font-size:11px;margin-top:6px;">GKE · Cloud SQL · Memorystore · Pub/Sub</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("Select GCP", key="btn_gcp", use_container_width=True,
+                     type="primary" if gcp_selected else "secondary"):
+            st.session_state.selected_cloud_provider = "GCP"
+            st.rerun()
 
     st.markdown("<br/>", unsafe_allow_html=True)
 
-    start_disabled = not repo_url or lumi_dep is None
+    cloud_provider = saved_provider
+    start_disabled = not repo_url or cloud_provider is None
+
     if st.button("🚀  Start Architecture Analysis", disabled=start_disabled,
                  use_container_width=True, type="primary"):
         engine = reset_engine()
@@ -165,19 +174,49 @@ def _render_input_panel(state: PlatformState):
 
         state.repo_url = repo_url
         state.safe_mode = safe_mode
-        state.lumi_dependency = lumi_dep
-        state.cloud_provider = "GCP" if lumi_dep else "AWS"
+        state.cloud_provider = cloud_provider
 
         engine.start(state)
-        # Scroll to top so user sees workflow from step 1
-        components.html(
-            "<script>window.parent.document.querySelector('.main').scrollTo({top:0,behavior:'smooth'});</script>",
-            height=0,
-        )
         st.rerun()
 
-    if start_disabled and repo_url:
-        st.caption("Please answer the LUMI question above before starting.")
+    if start_disabled and repo_url and not cloud_provider:
+        st.caption("Please select a cloud provider above before starting.")
+
+
+def _render_completion_summary(state: PlatformState, step_logs: dict):
+    st.markdown(
+        '<div style="background:linear-gradient(135deg,#0d2c1a,#0d1f3c);border:1px solid #276749;'
+        'border-radius:12px;padding:16px 20px;margin-bottom:16px;text-align:center;">'
+        '<div style="color:#68d391;font-size:18px;font-weight:800;">✅ Analysis Complete</div>'
+        '<div style="color:#a0aec0;font-size:13px;margin-top:4px;">'
+        'All steps completed — click any artifact button to explore results</div>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    cols = st.columns(2)
+    for i, step in enumerate(WORKFLOW_STEPS):
+        sid = step["id"]
+        status = state.step_statuses.get(sid, StepStatus.PENDING)
+        cfg = STATUS_CONFIG[status]
+        model = step.get("model", "Sonnet")
+        model_color = MODEL_COLORS.get(model, "#00d4ff")
+        outcome = _step_outcome_summary(sid, state) if status == StepStatus.COMPLETED else ""
+        logs_for_step = step_logs.get(sid, [])
+        log_count = len(logs_for_step)
+
+        with cols[i % 2]:
+            header = (
+                f"{cfg['icon']} **#{i+1} {step['label']}**"
+                + (f"  \n{outcome}" if outcome else "")
+            )
+            with st.expander(header, expanded=False):
+                if status == StepStatus.COMPLETED and sid in ARTIFACT_LABELS:
+                    _render_action_buttons(sid, state, idx=i)
+                if logs_for_step:
+                    render_inline_logs(logs_for_step)
+                elif log_count == 0:
+                    st.caption("No logs available.")
 
 
 def _render_workflow_panel(state: PlatformState):
@@ -221,42 +260,28 @@ def _render_workflow_panel(state: PlatformState):
     # ── Workflow complete ───────────────────────────────────────
     if state.workflow_complete:
         render_progress_bar(state)
-        render_step_cards(state, step_logs)
-
         if state.workflow_error:
             st.error(f"Workflow failed: {state.workflow_error}")
+            render_step_cards(state, step_logs)
         else:
-            st.success(
-                "✅ Analysis complete — click View on any step to explore the generated artifacts. "
-                "Use the sidebar to navigate all pages."
-            )
+            _render_completion_summary(state, step_logs)
 
-        if st.button("🔄  Run New Analysis", use_container_width=True):
-            st.session_state.platform_state = PlatformState()
-            st.session_state.step_logs = {}
-            st.session_state.pop("lumi_dependency", None)
-            st.session_state.active_artifact = None
-            st.rerun()
+        st.markdown("<br/>", unsafe_allow_html=True)
+        col_next, col_new = st.columns(2)
+        with col_next:
+            if st.button("🚀  View Deployment Simulation →", use_container_width=True, type="primary"):
+                st.session_state.current_page = "Deployment"
+                st.rerun()
+        with col_new:
+            if st.button("🔄  Run New Analysis", use_container_width=True):
+                st.session_state.platform_state = PlatformState()
+                st.session_state.step_logs = {}
+                st.session_state.pop("selected_cloud_provider", None)
+                st.session_state.active_artifact = None
+                st.rerun()
         return
 
-    # ── Live polling ─────────────────────────────────────────
-    # Single placeholder — only drain_queue_and_refresh writes here, no pre-render
-    progress_placeholder = st.empty()
-    step_placeholder = st.empty()
-
-    if state.workflow_running:
-        while state.workflow_running or (engine and not engine.log_queue.empty()):
-            state, step_logs = drain_queue_and_refresh(
-                engine, state, step_logs, step_placeholder, progress_placeholder,
-            )
-            st.session_state.step_logs = step_logs
-            time.sleep(0.3)
-            if not state.workflow_running and engine.log_queue.empty():
-                break
-
-        # Final drain then rerun → enters workflow_complete branch above
-        state, step_logs = drain_queue_and_refresh(
-            engine, state, step_logs, step_placeholder, progress_placeholder,
-        )
-        st.session_state.step_logs = step_logs
-        st.rerun()
+    # ── Live polling via fragment ─────────────────────────────
+    # @st.fragment(run_every=0.3) auto-reruns every 300ms and only updates
+    # its own DOM area — no full-page rerun, no flicker.
+    _live_polling_fragment()

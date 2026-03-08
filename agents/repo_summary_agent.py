@@ -6,8 +6,9 @@ from utils.logger import make_log
 
 SYSTEM = """You are a senior cloud architect creating an executive-level architecture summary.
 Based on the repository analysis, write a clear, structured summary suitable for a Senior Leadership audience.
-Cover: what the application does, its architecture style, key components, current state, and cloud readiness.
-Be concise but insightful. Use plain text, no markdown headers."""
+Format the output as Markdown bullet points grouped under these 4 short bold headings:
+**What it does**, **Architecture**, **Key Components**, **Cloud Readiness**.
+Each heading should have 2-4 concise bullet points. Be insightful and specific, not generic."""
 
 
 def run(state: PlatformState, log_queue: queue.Queue) -> PlatformState:

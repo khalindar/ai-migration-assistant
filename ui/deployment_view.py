@@ -86,33 +86,30 @@ def _render_pod_table(k8s_results: dict):
         st.caption("No pods deployed.")
         return
 
-    header = """
-    <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;
-                background:#0d1117;border-radius:8px 8px 0 0;padding:8px 12px;
-                border-bottom:1px solid #30363d;">
-        <span style="color:#718096;font-size:11px;font-weight:700;">SERVICE</span>
-        <span style="color:#718096;font-size:11px;font-weight:700;">STATUS</span>
-        <span style="color:#718096;font-size:11px;font-weight:700;">READY</span>
-        <span style="color:#718096;font-size:11px;font-weight:700;">RESTARTS</span>
-    </div>
-    """
+    col = "display:grid;grid-template-columns:2fr 1fr 1fr 1fr;"
+    header = (
+        f'<div style="{col}background:#0d1117;border-radius:8px 8px 0 0;padding:8px 12px;border-bottom:1px solid #30363d;">'
+        '<span style="color:#718096;font-size:11px;font-weight:700;">SERVICE</span>'
+        '<span style="color:#718096;font-size:11px;font-weight:700;">STATUS</span>'
+        '<span style="color:#718096;font-size:11px;font-weight:700;">READY</span>'
+        '<span style="color:#718096;font-size:11px;font-weight:700;">RESTARTS</span>'
+        '</div>'
+    )
 
     rows = []
     for svc, status in k8s_results.items():
-        rows.append(f"""
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr;
-                    background:#161b22;padding:8px 12px;border-bottom:1px solid #21262d;">
-            <span style="color:#e2e8f0;font-size:13px;">{svc}</span>
-            <span style="color:#68d391;font-size:12px;">Running ✔</span>
-            <span style="color:#68d391;font-size:12px;">1/1</span>
-            <span style="color:#a0aec0;font-size:12px;">0</span>
-        </div>
-        """)
+        rows.append(
+            f'<div style="{col}background:#161b22;padding:8px 12px;border-bottom:1px solid #21262d;">'
+            f'<span style="color:#e2e8f0;font-size:13px;">{svc}</span>'
+            '<span style="color:#68d391;font-size:12px;">Running ✔</span>'
+            '<span style="color:#68d391;font-size:12px;">1/1</span>'
+            '<span style="color:#a0aec0;font-size:12px;">0</span>'
+            '</div>'
+        )
 
-    st.markdown(
+    st.html(
         f'<div style="border:1px solid #30363d;border-radius:8px;overflow:hidden;">'
-        f'{header}{"".join(rows)}</div>',
-        unsafe_allow_html=True,
+        f'{header}{"".join(rows)}</div>'
     )
 
 

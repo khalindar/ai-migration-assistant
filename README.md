@@ -1,4 +1,4 @@
-# AI Platform Architect
+# AI Cloud Migration Assistant
 
 An AI-powered internal developer platform that analyzes a GitHub repository and automatically designs, modernizes, and simulates deployment of a cloud architecture. 
 ---
@@ -21,7 +21,7 @@ An AI-powered internal developer platform that analyzes a GitHub repository and 
 
 ## Overview
 
-AI Platform Architect uses a **multi-agent architecture** where 11 specialized AI agents work in sequence to:
+AI Cloud Migration Assistant uses a **multi-agent architecture** where 11 specialized AI agents work in sequence to:
 
 1. Clone and scan a GitHub repository
 2. Analyze its architecture and dependencies
@@ -88,7 +88,7 @@ The system runs entirely on a laptop with **Safe Mode** enabled — no real clou
 | 4 | DependencyAgent | Sonnet | Analysis + directory structure | Service dependency map, Mermaid diagram, Plotly graph data |
 | 5 | InfrastructureAgent | Sonnet | Dependency map + cloud provider | List of required cloud resources |
 | 6 | ModernizationAgent | **Opus** | Full analysis + summary | Recommendations, migration phases, risks, quick wins |
-| 7 | CloudSelectionAgent | Logic | LUMI question answer | `cloud_provider = "AWS"` or `"GCP"` |
+| 7 | CloudSelectionAgent | Logic | User card selection | `cloud_provider = "AWS"` or `"GCP"` |
 | 8 | KubernetesAgent | Sonnet | Services + dependencies + cloud | K8s Deployment/Service/Ingress YAML per service |
 | 9 | TerraformAgent | Sonnet | Infrastructure resources + cloud | Raw Terraform HCL (provider, networking, cluster, DB, cache) |
 | 10-13 | DeploymentAgent | Executors | K8s manifests + Terraform resources | Docker builds, Terraform provisioning, K8s deploy, endpoint |
@@ -246,7 +246,7 @@ ai-platform-architect/
 │   ├── dependency_agent.py        # Step 4: Build dependency map + Mermaid + Plotly data
 │   ├── infrastructure_agent.py    # Step 5: Identify cloud resources needed
 │   ├── modernization_agent.py     # Step 6: Claude Opus — modernization recommendations
-│   ├── cloud_selection_agent.py   # Step 7: LUMI check → AWS or GCP
+│   ├── cloud_selection_agent.py   # Step 7: Confirm user-selected cloud provider (AWS or GCP)
 │   ├── kubernetes_agent.py        # Step 8: Generate K8s YAML manifests
 │   ├── terraform_agent.py         # Step 9: Generate raw Terraform HCL
 │   ├── deployment_agent.py        # Steps 10-13: Orchestrate Docker/Terraform/K8s executors
@@ -407,7 +407,7 @@ Open **http://localhost:8501** in your browser.
 
 1. Paste a public GitHub repository URL (see good demo repos below)
 2. Check **Safe Mode** (recommended — no real cloud resources)
-3. Answer the LUMI question (No → AWS for standard demo)
+3. Select **AWS** or **GCP** as the target cloud provider
 4. Click **Start Architecture Analysis**
 5. Watch the 14-step pipeline run in real time
 6. Click any completed step to view its logs and download artifacts
@@ -421,6 +421,8 @@ Open **http://localhost:8501** in your browser.
 | `https://github.com/Netflix/conductor` | Enterprise Java — great modernization recommendations |
 | `https://github.com/django/django` | Monolith pattern — strong breakup recommendations |
 | `https://github.com/expressjs/express` | Node.js — clean dependency graph |
+| `https://github.com/buddy-works/simple-java-project` | Enterprise Java — Simple dependency graph |
+| `https://github.com/agoncal/agoncal-application-petstore-ee6` | Enterprise Java — Petstore app |
 
 ---
 
@@ -443,15 +445,10 @@ Safe Mode is the default and recommended setting for all demos.
 ```
 Default: AWS
 
-Before workflow starts, the user is asked:
-  "Does this application have any dependency with LUMI
-   or any internal services that require GCP?"
+Before workflow starts, the user selects the target cloud provider via visual cards:
 
-  YES → cloud_provider = "GCP"
-        Terraform targets: GKE, Cloud SQL, Cloud Memorystore, GCS
-
-  NO  → cloud_provider = "AWS"
-        Terraform targets: EKS, RDS, ElastiCache, S3
+  AWS → Terraform targets: EKS, RDS, ElastiCache, S3
+  GCP → Terraform targets: GKE, Cloud SQL, Cloud Memorystore, GCS
 ```
 
-The `CloudSelectionAgent` (Step 7) reads `state.lumi_dependency` set from the user's answer and writes `state.cloud_provider`. All downstream agents (Steps 8, 9, 10-13) read this field to target the correct cloud provider.
+The `CloudSelectionAgent` (Step 7) is a pass-through that confirms `state.cloud_provider` already set by the user's card selection. All downstream agents (Steps 8, 9, 10-13) read this field to target the correct cloud provider.

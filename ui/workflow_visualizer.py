@@ -131,10 +131,11 @@ def _render_action_buttons(step_id: str, state: PlatformState, idx: int):
 def render_artifact_content(step_id: str, state: PlatformState):
     if step_id == "summarize":
         st.markdown(
-            f'<div style="background:#0a1628;border-radius:8px;padding:20px;'
-            f'line-height:1.7;color:#e2e8f0;font-size:14px;">{state.repo_summary}</div>',
+            '<div style="background:#0a1628;border-radius:8px;padding:4px 20px 20px 20px;line-height:1.7;color:#e2e8f0;font-size:14px;">',
             unsafe_allow_html=True,
         )
+        st.markdown(state.repo_summary)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     elif step_id == "dependencies":
         t1, t2 = st.tabs(["🗺 Architecture Diagram", "🕸 Dependency Graph"])
@@ -362,20 +363,20 @@ def render_step_cards(state: PlatformState, step_logs: dict = None, show_actions
 
             outcome = _step_outcome_summary(step_id, state)
             with st.expander(f"📋 Logs — {outcome[:70]}", expanded=False):
-                _render_inline_logs(logs_for_step)
+                render_inline_logs(logs_for_step)
 
         elif status == StepStatus.RUNNING and logs_for_step:
             with st.expander("⚡ Live logs (running...)", expanded=True):
-                _render_inline_logs(logs_for_step)
+                render_inline_logs(logs_for_step)
 
         elif status == StepStatus.FAILED and logs_for_step:
             with st.expander("❌ Error logs", expanded=True):
-                _render_inline_logs(logs_for_step)
+                render_inline_logs(logs_for_step)
 
         st.markdown("<div style='margin-bottom:4px;'></div>", unsafe_allow_html=True)
 
 
-def _render_inline_logs(logs: list):
+def render_inline_logs(logs: list):
     if not logs:
         st.caption("No logs captured for this step.")
         return

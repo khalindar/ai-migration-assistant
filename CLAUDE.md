@@ -50,7 +50,7 @@ This is a **Streamlit app** that analyzes a GitHub repository and generates a cl
 | 10-13 | DeploymentAgent | Executor | Docker/Terraform/K8s (simulated) |
 | 14 | CostEstimationAgent | Sonnet | cost_estimation |
 
-**Cloud selection logic:** If the repo has a LUMI dependency → GCP; otherwise → AWS.
+**Cloud selection:** User picks AWS or GCP via visual cards before starting. `CloudSelectionAgent` (Step 7) is a pass-through that confirms the pre-set provider.
 
 ### Key Files
 

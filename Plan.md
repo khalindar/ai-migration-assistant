@@ -1,8 +1,8 @@
-# AI Platform Architect — Implementation Plan
+# AI Cloud Migration Assistant — Implementation Plan
 
 ## Overview
 
-An AI-powered internal developer platform that analyzes a GitHub repository and automatically designs, modernizes, and simulates deployment of a cloud architecture. Built for VP-level demos.
+An AI-powered internal developer platform that analyzes a GitHub repository and automatically designs, modernizes, and simulates deployment of a cloud architecture. Built for Senior leadership-level demos.
 
 ---
 
@@ -39,7 +39,7 @@ agents/ (14-step pipeline)
 ├── dependency_agent.py
 ├── infrastructure_agent.py
 ├── modernization_agent.py   — Claude Opus
-├── cloud_selection_agent.py — Logic-based (LUMI → GCP, else AWS)
+├── cloud_selection_agent.py — Pass-through: confirms user-selected provider (AWS or GCP)
 ├── kubernetes_agent.py
 ├── terraform_agent.py
 ├── deployment_agent.py      — Steps 10-13 (bundle/provision/deploy/validate)
@@ -87,14 +87,17 @@ utils/
 - `_StepQueue` wrapper auto-tags each `LogEvent` with `step_id`
 - UI drains queue every 300ms and routes logs to per-step buckets in `step_logs` dict
 - `show_actions=True` in both polling and completed states — View buttons appear immediately when a step completes, not at end of full workflow
+- Polling uses `@st.fragment(run_every=0.3)` — fragment auto-reruns every 300ms and only updates its own DOM section (no full-page rerun, no flicker). When workflow completes, `st.rerun()` inside the fragment triggers a full page rerun to show the completion view
+- Steps 11-13 (provision/deploy/validate) remain in RUNNING state throughout the workflow — simulates ongoing cloud infrastructure activity during demos; only bundle (step 10) transitions to COMPLETED
 
-### Artifact Viewing (VP-level UX)
+### Artifact Viewing (Leadership level UX)
 - View buttons use `@st.dialog(width="large")` defined at module level in `dashboard.py`
 - Dialog opens as a true modal popup overlay on button click (sets `active_artifact` + `st.rerun()`)
 - Dialog is triggered for both `workflow_running` and `workflow_complete` states
-- Modal includes native Streamlit X button (top-right) + internal "✕ Close" button
+- Native Streamlit X button is **hidden via CSS** — it cannot clear `active_artifact` from session state, causing the dialog to immediately reopen on the next polling rerun
+- Dialog has "✕ Close" buttons at both **top and bottom**; clicking either clears `active_artifact` + reruns
+- Polling is **paused while dialog is open** (`active_artifact` is set) — prevents any automatic rerun from reopening the dialog
 - Dialog calls `render_artifact_content(step_id, state)` from `workflow_visualizer.py`
-- Close button inside dialog clears `active_artifact` + reruns
 
 ### Duplicate Key Prevention
 - Initial pre-loop render removed — only `drain_queue_and_refresh` renders step cards during polling
@@ -106,10 +109,10 @@ utils/
 - Applied to all 7 JSON-returning agents
 
 ### Cloud Selection
-- User answers LUMI dependency question (radio, horizontal)
-- LUMI dependency → GCP (with 5 GCP-specific justifications)
-- No LUMI → AWS (with 5 AWS-specific justifications)
-- Recommendation card shows instantly on radio selection
+- User selects AWS or GCP via two visual cards on the input panel before starting the workflow
+- Selected card highlights with a colored border; button changes to `type="primary"`
+- `state.cloud_provider` set directly from the card selection before workflow starts
+- `cloud_selection_agent` (Step 7) is a pass-through that confirms the pre-set provider in logs
 
 ### Token Limits
 - Modernization, Kubernetes, Terraform agents use `max_tokens=8096`
@@ -134,14 +137,21 @@ utils/
 
 ### Navigation
 - Sidebar uses `st.radio` (not buttons) to preserve state during workflow polling reruns
-- App title "🏗️ AI Platform Architect" injected into Streamlit header via JavaScript `window.parent.document`
-- Title: 20px bold cyan; Caption: 11px muted grey, horizontally centered
+- App title injected into Streamlit header via JavaScript `window.parent.document`
+- Top padding `2rem`, bottom padding `6rem` via `stMainBlockContainer` CSS override — ensures buttons at the bottom of the page are always visible
+- Primary buttons: blue gradient; secondary buttons + download buttons: subtle dark `#1a1f2e` style — targeted via both `baseButton-*` and `stBaseButton-*` data-testid variants (Streamlit naming varies by version)
+- Completion view: compact 2-column step grid where each step card is a clickable `st.expander` — clicking reveals logs and View/Download artifact buttons inline (no separate log box); header shows step icon, number, label, and outcome summary; "🚀 View Deployment Simulation →" navigation at bottom
+- Architecture summary formatted as Markdown bullet points (4 sections: What it does, Architecture, Key Components, Cloud Readiness) — prompt updated in `repo_summary_agent.py`; `render_artifact_content` uses `st.markdown()` to render bullets
 
 ### Step Cards
 - Agent name displayed in colored pill badge (Opus = purple `#9f7aea`, Sonnet = cyan `#00d4ff`)
 - Model name in separate dark pill (`Claude Sonnet` / `Claude Opus`)
 - Active artifact step gets cyan glow ring (`box-shadow`)
 - Step outcome summary shown in log expander header
+
+### HTML Rendering
+- Use `st.html()` (not `st.markdown(..., unsafe_allow_html=True)`) for multi-row HTML tables — Markdown treats lines with 4+ leading spaces as code blocks, which causes raw HTML to appear as text instead of rendering
+- `st.markdown` is fine for single-block HTML snippets with no indented child elements
 
 ### Artifact Modals
 - `@st.dialog(width="large")` defined in `dashboard.py` (avoids imported-module registration issues)

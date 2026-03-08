@@ -78,10 +78,10 @@ class WorkflowEngine:
         for step_id, agent in STEP_AGENTS:
             step_q = _StepQueue(self.log_queue, step_id)
             try:
-                state.step_statuses[step_id] = StepStatus.RUNNING
-                self.log_queue.put(StepStatusEvent(step_id=step_id, status=StepStatus.RUNNING))
-
                 if step_id in DEPLOYMENT_STEPS:
+                    # All 4 deployment steps are executed together when "bundle" is reached.
+                    # Steps 11-13 (provision/deploy/validate) are skipped here — their
+                    # statuses are already set to COMPLETED by the "bundle" handler.
                     if not deployment_done:
                         for ds in ["bundle", "provision", "deploy", "validate"]:
                             state.step_statuses[ds] = StepStatus.RUNNING
@@ -91,10 +91,14 @@ class WorkflowEngine:
                         state = deployment_agent.run(state, deploy_q)
                         deployment_done = True
 
-                        for ds in ["bundle", "provision", "deploy", "validate"]:
-                            state.step_statuses[ds] = StepStatus.COMPLETED
-                            self.log_queue.put(StepStatusEvent(step_id=ds, status=StepStatus.COMPLETED))
+                        # Bundle completes; provision/deploy/validate remain RUNNING
+                        # to simulate ongoing cloud infrastructure activity during the demo
+                        state.step_statuses["bundle"] = StepStatus.COMPLETED
+                        self.log_queue.put(StepStatusEvent(step_id="bundle", status=StepStatus.COMPLETED))
                     continue
+
+                state.step_statuses[step_id] = StepStatus.RUNNING
+                self.log_queue.put(StepStatusEvent(step_id=step_id, status=StepStatus.RUNNING))
 
                 if agent is not None:
                     state = agent.run(state, step_q)

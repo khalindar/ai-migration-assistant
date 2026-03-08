@@ -32,7 +32,7 @@ class PlatformState(BaseModel):
     repo_url: str = ""
     safe_mode: bool = True
     cloud_provider: str = "AWS"
-    lumi_dependency: bool = False
+    TUMI_dependency: bool = False
 
     # Step statuses
     step_statuses: dict[str, str] = Field(

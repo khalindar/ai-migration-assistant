@@ -3,7 +3,10 @@
     "allow": [
       "Bash(pkill:*)",
       "Bash(source:*)",
-      "Bash(docker build:*)"
+      "Bash(docker build:*)",
+      "Bash(chmod +x:*)",
+      "Bash(curl:*)",
+      "Bash(python:*)"
     ]
   }
 }
