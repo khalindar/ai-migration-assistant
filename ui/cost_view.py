@@ -21,8 +21,9 @@ def render():
         st.warning("Cost estimation data not available.")
         return
 
-    # Top-level metrics
-    total_monthly = cost.get("total_monthly", 0)
+    # Derive total_monthly from line items so it always matches the subtotal
+    items_all = cost.get("line_items", [])
+    total_monthly = sum(i.get("monthly_cost", 0) for i in items_all) or cost.get("total_monthly", 0)
     total_annual = cost.get("total_annual", total_monthly * 12)
     provider = cost.get("provider", state.cloud_provider)
     region = cost.get("region", "us-east-1")
@@ -69,7 +70,7 @@ def _render_line_items(cost: dict):
         })
 
     df = pd.DataFrame(rows)
-    total = cost.get("subtotal", sum(i.get("monthly_cost", 0) for i in items))
+    total = sum(i.get("monthly_cost", 0) for i in items)
 
     st.dataframe(
         df,

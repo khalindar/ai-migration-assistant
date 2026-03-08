@@ -114,6 +114,10 @@ utils/
 - `state.cloud_provider` set directly from the card selection before workflow starts
 - `cloud_selection_agent` (Step 7) is a pass-through that confirms the pre-set provider in logs
 
+### Cost Consistency
+- `total_monthly` metric and the line-item subtotal always match: both are derived by summing `line_items[].monthly_cost` — Claude's `total_monthly` field is ignored to avoid discrepancies between the header metric and the table subtotal
+- `total_annual` falls back to `total_monthly * 12` if not returned by the agent
+
 ### Token Limits
 - Modernization, Kubernetes, Terraform agents use `max_tokens=8096`
 - TerraformAgent returns raw HCL directly (not JSON-wrapped) to avoid parsing failures
@@ -156,7 +160,8 @@ utils/
 ### Artifact Modals
 - `@st.dialog(width="large")` defined in `dashboard.py` (avoids imported-module registration issues)
 - True modal overlay with native Streamlit X button + internal "✕ Close" button
-- Per-artifact content: Summary (text), Dependencies (tabs: Diagram + Plotly graph), Infrastructure (3-col resource cards), Modernization (current/target + expandable recs), Kubernetes (manifest selector + code), Terraform (HCL code block), Cost (metrics + dataframe + savings tips)
+- Per-artifact content: Summary (text), Dependencies (tabs: Diagram + Plotly graph), Infrastructure (3-col resource cards), Modernization (see below), Kubernetes (manifest selector + code), Terraform (HCL code block), Cost (metrics + dataframe + savings tips)
+- Modernization view is identical in both the artifact modal (`workflow_visualizer.py`) and the Generated Infrastructure page (`architecture_view.py`): bullet-pointed Current State (red ●) vs Target State (green ●) side-by-side panels, Migration Roadmap phase cards with activities, expandable Recommendations, Quick Wins list
 
 ### Q&A Page
 - Scroll-to-top JS injected after each answer so user reads from the beginning

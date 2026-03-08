@@ -183,6 +183,7 @@ def _render_terraform(state: PlatformState):
 
 
 def _render_modernization(state: PlatformState):
+    import re as _re
     st.markdown("#### Modernization Plan")
     plan = state.modernization_plan
 
@@ -190,58 +191,80 @@ def _render_modernization(state: PlatformState):
         st.caption("No modernization plan generated.")
         return
 
-    # Current vs Target state
+    def _to_bullets(text: str) -> list:
+        parts = _re.split(r'\.\s+(?=[A-Z])|[\n\r]+', text.strip())
+        return [p.strip().rstrip('.') for p in parts if p.strip()]
+
+    current_bullets = _to_bullets(plan.get("current_state", "—"))
+    target_bullets  = _to_bullets(plan.get("target_state", "—"))
+
+    cur_rows = "".join(
+        f'<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #3d2020;">'
+        f'<span style="color:#fc8181;flex-shrink:0;margin-top:2px;">●</span>'
+        f'<span style="color:#e2e8f0;font-size:13px;line-height:1.5;">{b}</span></div>'
+        for b in current_bullets
+    )
+    tgt_rows = "".join(
+        f'<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #1e4030;">'
+        f'<span style="color:#68d391;flex-shrink:0;margin-top:2px;">●</span>'
+        f'<span style="color:#e2e8f0;font-size:13px;line-height:1.5;">{b}</span></div>'
+        for b in target_bullets
+    )
+
     col1, col2 = st.columns(2)
     with col1:
-        current = plan.get("current_state", "—")
-        st.markdown(
-            f'<div style="background:#2d1b1b;border:1px solid #742a2a;border-radius:8px;padding:16px;min-height:120px;">'
-            f'<div style="color:#fc8181;font-size:11px;font-weight:700;margin-bottom:8px;">CURRENT STATE</div>'
-            f'<div style="color:#e2e8f0;font-size:13px;line-height:1.6;">{current}</div></div>',
-            unsafe_allow_html=True,
+        st.html(
+            f'<div style="background:#2d1b1b;border:1px solid #742a2a;border-radius:10px;padding:16px;height:100%;">'
+            f'<div style="color:#fc8181;font-size:11px;font-weight:700;letter-spacing:0.08em;margin-bottom:10px;">⚠ CURRENT STATE</div>'
+            f'{cur_rows}</div>'
         )
     with col2:
-        target = plan.get("target_state", "—")
+        st.html(
+            f'<div style="background:#1c4532;border:1px solid #276749;border-radius:10px;padding:16px;height:100%;">'
+            f'<div style="color:#68d391;font-size:11px;font-weight:700;letter-spacing:0.08em;margin-bottom:10px;">✅ TARGET STATE</div>'
+            f'{tgt_rows}</div>'
+        )
+
+    # Migration roadmap
+    phases = plan.get("migration_phases", [])
+    if phases:
         st.markdown(
-            f'<div style="background:#1c4532;border:1px solid #276749;border-radius:8px;padding:16px;min-height:120px;">'
-            f'<div style="color:#68d391;font-size:11px;font-weight:700;margin-bottom:8px;">TARGET STATE</div>'
-            f'<div style="color:#e2e8f0;font-size:13px;line-height:1.6;">{target}</div></div>',
+            '<div style="color:#e2e8f0;font-size:14px;font-weight:700;margin:20px 0 10px 0;">Migration Roadmap</div>',
             unsafe_allow_html=True,
         )
+        phase_cols = st.columns(len(phases[:4]))
+        for j, phase in enumerate(phases[:4]):
+            acts_html = "".join(
+                f'<div style="color:#a0aec0;font-size:11px;padding:3px 0;border-bottom:1px solid #2d3748;">▸ {a}</div>'
+                for a in phase.get("activities", [])
+            )
+            with phase_cols[j]:
+                st.html(
+                    f'<div style="background:#1a1f2e;border:1px solid #2d3748;border-top:3px solid #9f7aea;'
+                    f'border-radius:8px;padding:14px;">'
+                    f'<div style="color:#9f7aea;font-size:10px;font-weight:700;letter-spacing:0.06em;">PHASE {phase.get("phase","")}</div>'
+                    f'<div style="color:#e2e8f0;font-size:13px;font-weight:700;margin:4px 0;">{phase.get("name","")}</div>'
+                    f'<div style="color:#f6ad55;font-size:11px;margin-bottom:8px;">⏱ {phase.get("duration","")}</div>'
+                    f'{acts_html}</div>'
+                )
 
     # Recommendations
-    st.markdown("##### Recommendations")
+    st.markdown(
+        '<div style="color:#e2e8f0;font-size:14px;font-weight:700;margin:20px 0 8px 0;">Recommendations</div>',
+        unsafe_allow_html=True,
+    )
     for rec in plan.get("recommendations", []):
-        priority_color = {"high": "#fc8181", "medium": "#f6ad55", "low": "#68d391"}.get(
-            rec.get("priority", "medium"), "#a0aec0"
-        )
-        with st.expander(f"[{rec.get('priority','').upper()}] {rec.get('title','')}"):
+        p = rec.get("priority", "medium").upper()
+        with st.expander(f"[{p}] {rec.get('title','')}"):
             st.markdown(rec.get("description", ""))
-            if rec.get("steps"):
-                for step in rec["steps"]:
-                    st.markdown(f"- {step}")
-
-    # Migration phases
-    if plan.get("migration_phases"):
-        st.markdown("##### Migration Phases")
-        phases = plan["migration_phases"]
-        cols = st.columns(min(len(phases), 3))
-        for i, phase in enumerate(phases[:3]):
-            with cols[i % 3]:
-                st.markdown(
-                    f"""
-                    <div style="background:#1a1f2e;border:1px solid #2d3748;
-                                border-top:3px solid #9f7aea;border-radius:8px;padding:14px;">
-                        <div style="color:#9f7aea;font-size:11px;font-weight:700;">PHASE {phase.get('phase','')}</div>
-                        <div style="color:#e2e8f0;font-size:14px;font-weight:700;margin:6px 0;">{phase.get('name','')}</div>
-                        <div style="color:#718096;font-size:12px;">{phase.get('duration','')}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+            for step in rec.get("steps", []):
+                st.markdown(f"- {step}")
 
     # Quick wins
     if plan.get("quick_wins"):
-        st.markdown("##### Quick Wins")
+        st.markdown(
+            '<div style="color:#e2e8f0;font-size:14px;font-weight:700;margin:16px 0 8px 0;">Quick Wins</div>',
+            unsafe_allow_html=True,
+        )
         for win in plan["quick_wins"]:
-            st.markdown(f"✅ {win}")
+            st.markdown(f'<div style="color:#68d391;font-size:13px;padding:4px 0;">✅ {win}</div>', unsafe_allow_html=True)
