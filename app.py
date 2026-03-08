@@ -17,7 +17,7 @@ st.markdown("""
     /* Base */
     .stApp { background-color: #0d1117; color: #e2e8f0; }
     section[data-testid="stSidebar"] { background-color: #161b22; border-right: 1px solid #30363d; }
-    .st-emotion-cache-k39vsp { font-size: 12px !important; }
+    .st-emotion-cache-k39vsp { font-size: 14px !important; }
 
     /* Remove top gap above first heading inside dialog artifact content */
     div[role="dialog"] h1:first-child,
@@ -94,8 +94,22 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { color: #718096; border-radius: 6px; }
     .stTabs [aria-selected="true"] { background-color: #0080ff !important; color: #fff !important; }
 
-    /* Expanders */
+    /* Expanders — default */
     .streamlit-expanderHeader { background-color: #161b22 !important; border-radius: 8px !important; }
+
+    /* Expanders — highlight open/selected card in completion summary */
+    details[open] > summary,
+    details[open] > summary:hover {
+        background: linear-gradient(135deg, #0d2137, #0a1628) !important;
+        border-left: 3px solid #00d4ff !important;
+        border-radius: 8px 8px 0 0 !important;
+        color: #00d4ff !important;
+        box-shadow: 0 0 0 1px #00d4ff44 !important;
+    }
+    details[open] {
+        border: 1px solid #00d4ff44 !important;
+        border-radius: 8px !important;
+    }
 
     /* Chat */
     .stChatMessage { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; }
