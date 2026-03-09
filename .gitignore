@@ -1,0 +1,8 @@
+.env
+__pycache__
+.env.example
+.venv
+*.pyc
+*.pyo
+.env
+.git
