@@ -59,6 +59,24 @@ class WorkflowEngine:
     def __init__(self):
         self.log_queue: queue.Queue = queue.Queue()
         self._thread: threading.Thread = None
+        self._store = None
+
+    def _get_store(self):
+        if self._store is None:
+            try:
+                from services.state_store import get_store
+                self._store = get_store()
+            except Exception:
+                pass
+        return self._store
+
+    def _save(self, state: PlatformState):
+        try:
+            store = self._get_store()
+            if store:
+                store.save(state)
+        except Exception:
+            pass  # storage failure must never break the workflow
 
     def start(self, state: PlatformState) -> PlatformState:
         state.workflow_running = True
@@ -95,6 +113,7 @@ class WorkflowEngine:
                         # to simulate ongoing cloud infrastructure activity during the demo
                         state.step_statuses["bundle"] = StepStatus.COMPLETED
                         self.log_queue.put(StepStatusEvent(step_id="bundle", status=StepStatus.COMPLETED))
+                        self._save(state)
                     continue
 
                 state.step_statuses[step_id] = StepStatus.RUNNING
@@ -105,6 +124,7 @@ class WorkflowEngine:
 
                 state.step_statuses[step_id] = StepStatus.COMPLETED
                 self.log_queue.put(StepStatusEvent(step_id=step_id, status=StepStatus.COMPLETED))
+                self._save(state)
 
             except Exception as e:
                 error_msg = traceback.format_exc()
@@ -117,6 +137,7 @@ class WorkflowEngine:
 
         state.workflow_running = False
         state.workflow_complete = True
+        self._save(state)
         self.log_queue.put(make_log("System", "Workflow complete ✔", "success"))
 
 

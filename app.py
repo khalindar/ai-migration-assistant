@@ -260,6 +260,14 @@ with st.sidebar:
             st.markdown('<div style="color:#68d391;font-size:14px;text-align:center;">✅ Analysis Complete</div>', unsafe_allow_html=True)
             if state.repo_url:
                 st.markdown(f'<div style="color:#4a5568;font-size:11px;text-align:center;word-break:break-all;">{state.repo_url.split("/")[-1]}</div>', unsafe_allow_html=True)
+            if state.loaded_from_cache:
+                st.markdown(
+                    '<div style="margin-top:8px;text-align:center;">'
+                    '<span style="background:#0d2c1a;border:1px solid #276749;border-radius:12px;'
+                    'color:#68d391;font-size:11px;font-weight:600;padding:3px 10px;">'
+                    '📦 Loaded from cache</span></div>',
+                    unsafe_allow_html=True,
+                )
 
 
 # Page routing

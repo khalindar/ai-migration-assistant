@@ -62,6 +62,9 @@ class PlatformState(BaseModel):
     mermaid_diagram: str = ""
     dependency_graph_data: dict = Field(default_factory=dict)
 
+    # Persistence metadata
+    loaded_from_cache: bool = False
+
     # Detected metadata
     detected_services: list = Field(default_factory=list)
     detected_languages: list = Field(default_factory=list)

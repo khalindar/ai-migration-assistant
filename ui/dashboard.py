@@ -11,6 +11,14 @@ from ui.workflow_visualizer import (
 )
 
 
+def _try_get_store():
+    try:
+        from services.state_store import get_store
+        return get_store()
+    except Exception:
+        return None
+
+
 # ── Artifact modal — defined at module level so @st.dialog registers correctly ──
 @st.dialog("📂 Artifact Viewer", width="large")
 def _show_artifact_modal(state: PlatformState):
@@ -105,6 +113,50 @@ def _render_input_panel(state: PlatformState):
         placeholder="https://github.com/username/repository",
     )
 
+    # ── Cache banner: shown when a saved analysis exists for this URL ──────
+    if repo_url and repo_url.startswith("http"):
+        store = _try_get_store()
+        cached_meta = store.find_by_url(repo_url) if store else None
+        dismissed = st.session_state.get("cache_dismissed_url", "") == repo_url
+
+        if cached_meta and not dismissed:
+            from services.state_store import format_saved_at
+            saved_label = format_saved_at(cached_meta.get("saved_at", ""))
+            provider = cached_meta.get("cloud_provider", "")
+            steps_done = cached_meta.get("steps_completed", 0)
+            provider_color = "#34a853" if provider == "GCP" else "#ff9900"
+
+            st.markdown(
+                f'<div style="background:linear-gradient(135deg,#0d2c1a,#0d1f2e);'
+                f'border:1px solid #276749;border-left:4px solid #68d391;'
+                f'border-radius:8px;padding:14px 16px;margin:12px 0;">'
+                f'<div style="color:#68d391;font-weight:700;font-size:14px;margin-bottom:4px;">'
+                f'📦 Saved Analysis Found</div>'
+                f'<div style="color:#a0aec0;font-size:13px;">'
+                f'Last saved <strong style="color:#e2e8f0;">{saved_label}</strong> &nbsp;·&nbsp; '
+                f'<strong style="color:{provider_color};">{provider}</strong> &nbsp;·&nbsp; '
+                f'{steps_done}/14 steps completed'
+                f'</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            col_load, col_rerun = st.columns(2)
+            with col_load:
+                if st.button("📂  Load Saved Analysis", key="btn_load_cache",
+                             use_container_width=True, type="primary"):
+                    loaded = store.load(repo_url)
+                    if loaded:
+                        st.session_state.platform_state = loaded
+                        st.session_state.selected_cloud_provider = loaded.cloud_provider
+                        st.session_state.step_logs = {}
+                        st.session_state.pop("active_artifact", None)
+                        st.rerun()
+            with col_rerun:
+                if st.button("🔄  Re-run Fresh Analysis", key="btn_dismiss_cache",
+                             use_container_width=True):
+                    st.session_state.cache_dismissed_url = repo_url
+                    st.rerun()
+
     safe_mode = st.checkbox(
         "Safe Mode — Simulate infrastructure (no real cloud resources created)",
         value=True,
@@ -181,6 +233,64 @@ def _render_input_panel(state: PlatformState):
 
     if start_disabled and repo_url and not cloud_provider:
         st.caption("Please select a cloud provider above before starting.")
+
+    _render_recent_sessions()
+
+
+def _render_recent_sessions():
+    """Show saved sessions below the input form."""
+    store = _try_get_store()
+    if not store:
+        return
+    sessions = store.list_sessions()
+    if not sessions:
+        return
+
+    from services.state_store import format_saved_at
+
+    st.markdown("<br/>", unsafe_allow_html=True)
+    st.markdown(
+        '<div style="color:#a0aec0;font-size:13px;font-weight:700;'
+        'letter-spacing:0.08em;margin-bottom:10px;">RECENT SESSIONS</div>',
+        unsafe_allow_html=True,
+    )
+
+    for session in sessions[:6]:
+        provider = session.get("cloud_provider", "")
+        provider_color = "#34a853" if provider == "GCP" else "#ff9900"
+        saved_label = format_saved_at(session.get("saved_at", ""))
+        steps_done = session.get("steps_completed", 0)
+        complete = session.get("workflow_complete", False)
+        status_icon = "✅" if complete else "⚡"
+        repo_name = session.get("repo_name", session.get("repo_url", "").split("/")[-1])
+
+        col_info, col_btn = st.columns([4, 1])
+        with col_info:
+            st.markdown(
+                f'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;'
+                f'padding:10px 14px;">'
+                f'<div style="display:flex;align-items:center;gap:8px;">'
+                f'<span style="font-size:15px;">{status_icon}</span>'
+                f'<span style="color:#e2e8f0;font-weight:700;font-size:13px;">{repo_name}</span>'
+                f'<span style="color:{provider_color};font-size:12px;font-weight:600;'
+                f'background:{provider_color}22;border-radius:4px;padding:1px 6px;">{provider}</span>'
+                f'</div>'
+                f'<div style="color:#4a5568;font-size:11px;margin-top:4px;">'
+                f'{steps_done}/14 steps &nbsp;·&nbsp; {saved_label}'
+                f'</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        with col_btn:
+            if st.button("Load", key=f"load_session_{session['key']}",
+                         use_container_width=True, type="secondary"):
+                loaded = store.load(session["repo_url"])
+                if loaded:
+                    st.session_state.platform_state = loaded
+                    st.session_state.selected_cloud_provider = loaded.cloud_provider
+                    st.session_state.step_logs = {}
+                    st.session_state.pop("active_artifact", None)
+                    st.rerun()
 
 
 def _render_completion_summary(state: PlatformState, step_logs: dict):
