@@ -1,4 +1,4 @@
-# AI Cloud Migration Assistant
+# Agentic Cloud Migration Assistant
 
 An AI-powered internal developer platform that analyzes a GitHub repository and automatically designs, modernizes, and simulates deployment of a cloud architecture. 
 ---
@@ -21,11 +21,11 @@ An AI-powered internal developer platform that analyzes a GitHub repository and 
 
 ## Overview
 
-AI Cloud Migration Assistant uses a **multi-agent architecture** where 11 specialized AI agents work in sequence to:
+Agentic Cloud Migration Assistant uses a **multi-agent architecture** where 11 specialized AI agents work in sequence to:
 
 1. Clone and scan a GitHub repository
 2. Analyze its architecture and dependencies
-3. Generate a cloud modernization plan
+3. Generate a Public cloud migration plan
 4. Produce Kubernetes manifests and Terraform infrastructure code
 5. Simulate a full cloud deployment
 6. Estimate monthly and annual costs

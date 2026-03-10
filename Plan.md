@@ -1,4 +1,4 @@
-# AI Cloud Migration Assistant — Implementation Plan
+# Agentic Cloud Migration Assistant — Implementation Plan
 
 ## Overview
 

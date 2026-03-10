@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import streamlit as st
 
 st.set_page_config(
-    page_title="AI Cloud Migration Assistant",
+    page_title="Agentic Cloud Migration Assistant",
     page_icon="🏗️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -210,7 +210,7 @@ _components.html("""
     ].join(';');
     div.innerHTML =
         '<div style="color:#00d4ff;font-size:24px;font-weight:800;letter-spacing:0.01em;">' +
-        '&#127959;&#65039;&nbsp;&nbsp;AI Cloud Migration Assistant</div>' +
+        '&#127959;&#65039;&nbsp;&nbsp;Agentic Cloud Migration Assistant</div>' +
         '<div style="color:#718096;font-size:12px;font-weight:400;letter-spacing:0.04em;">' +
         'Autonomous Cloud Architecture Discovery &amp; Deployment</div>';
     header.appendChild(div);
