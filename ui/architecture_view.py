@@ -24,7 +24,7 @@ def render():
         "Dependency Graph",
         "Kubernetes YAML",
         "Terraform Code",
-        "Modernization Plan",
+        "Migration Plan",
     ])
 
     with tab1:
@@ -184,11 +184,11 @@ def _render_terraform(state: PlatformState):
 
 def _render_modernization(state: PlatformState):
     import re as _re
-    st.markdown("#### Modernization Plan")
+    st.markdown("#### Migration Plan")
     plan = state.modernization_plan
 
     if not plan:
-        st.caption("No modernization plan generated.")
+        st.caption("No Migration Plan generated.")
         return
 
     def _to_bullets(text: str) -> list:

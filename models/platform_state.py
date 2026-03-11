@@ -15,7 +15,7 @@ WORKFLOW_STEPS = [
     {"id": "summarize",      "label": "Summarizing repository architecture",          "agent": "RepoSummaryAgent",      "model": "Sonnet"},
     {"id": "dependencies",   "label": "Generating service dependency graph",          "agent": "DependencyAgent",       "model": "Sonnet"},
     {"id": "infrastructure", "label": "Generating required infrastructure resources", "agent": "InfrastructureAgent",   "model": "Sonnet"},
-    {"id": "modernization",  "label": "Creating modernization plan for cloud migration","agent": "ModernizationAgent",  "model": "Opus"},
+    {"id": "modernization",  "label": "Creating Migration Plan for cloud migration","agent": "ModernizationAgent",  "model": "Opus"},
     {"id": "cloud",          "label": "Identifying optimal cloud provider",           "agent": "CloudSelectionAgent",   "model": "Sonnet"},
     {"id": "kubernetes",     "label": "Generating Kubernetes deployment YAML",        "agent": "KubernetesAgent",       "model": "Sonnet"},
     {"id": "terraform",      "label": "Generating Terraform infrastructure",          "agent": "TerraformAgent",        "model": "Sonnet"},

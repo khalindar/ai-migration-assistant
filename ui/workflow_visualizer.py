@@ -60,7 +60,7 @@ def _render_action_buttons(step_id: str, state: PlatformState, idx: int):
             "dl_fn": lambda: json.dumps(state.infrastructure_plan, indent=2),
         },
         "modernization": {
-            "view_label": "📋 View Modernization Plan",
+            "view_label": "📋 View Migration Plan",
             "has_data": bool(state.modernization_plan),
             "dl_label": "⬇ Download JSON",
             "dl_file": "modernization_plan.json",
