@@ -232,7 +232,7 @@ with st.sidebar:
         "🎯  Architecture Workflow",
         "🚀  Deployment Simulation",
         "💬  Architecture Q&A",
-        "🏛️  Generated Infrastructure",
+        "🏛️  Migration Blueprint",
         "💰  Cost Estimation",
     ]
     page_keys = ["Dashboard", "Deployment", "Q&A", "Infrastructure", "Cost"]

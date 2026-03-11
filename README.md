@@ -348,7 +348,7 @@ Every completed step exposes download buttons directly on the dashboard card:
 | 1. Architecture Workflow | 14-step animated pipeline with per-step agent name, logs, outcomes, and downloads |
 | 2. Deployment Simulation | Infrastructure provisioning output, pod status table, simulated endpoint |
 | 3. Architecture Q&A | Chat powered by Claude Opus + 7 architecture tools (Agent SDK) |
-| 4. Generated Infrastructure | Mermaid diagram · Plotly dependency graph · K8s YAML · Terraform · Modernization plan |
+| 4. Migration Blueprint | Mermaid diagram · Plotly dependency graph · K8s YAML · Terraform · Cloud Migration Plan |
 | 5. Cost Estimation | Monthly/annual costs · Plotly pie chart · Resource table · Savings tips |
 
 ---

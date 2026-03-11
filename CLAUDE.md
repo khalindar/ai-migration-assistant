@@ -25,7 +25,7 @@ There are no automated tests, linting, or build scripts in this project.
 
 ## Architecture Overview
 
-This is a **Streamlit app** that analyzes a GitHub repository and generates a cloud migration/modernization plan using a multi-agent Claude pipeline.
+This is a **Streamlit app** that analyzes a GitHub repository and generates a cloud migration/Cloud Migration Plan using a multi-agent Claude pipeline.
 
 ### Core Flow
 

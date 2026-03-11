@@ -9,7 +9,7 @@ from utils.diagram_generator import render_mermaid_html
 
 def render():
     st.markdown("""
-    <h2 style="color:#00d4ff;margin-bottom:4px;">Generated Infrastructure</h2>
+    <h2 style="color:#00d4ff;margin-bottom:4px;">Migration Blueprint</h2>
     <p style="color:#718096;margin-bottom:20px;">Architecture diagrams, service graph, and generated IaC artifacts</p>
     """, unsafe_allow_html=True)
 

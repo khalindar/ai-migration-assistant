@@ -143,7 +143,7 @@ utils/
 | 1 | 🎯 Architecture Workflow | `ui/dashboard.py` |
 | 2 | 🚀 Deployment Simulation | `ui/deployment_view.py` |
 | 3 | 💬 Architecture Q&A | `ui/qa_page.py` |
-| 4 | 🏛️ Generated Infrastructure | `ui/architecture_view.py` |
+| 4 | 🏛️ Migration Blueprint | `ui/architecture_view.py` |
 | 5 | 💰 Cost Estimation | `ui/cost_view.py` |
 
 ---
@@ -172,7 +172,7 @@ utils/
 - `@st.dialog(width="large")` defined in `dashboard.py` (avoids imported-module registration issues)
 - True modal overlay with native Streamlit X button + internal "✕ Close" button
 - Per-artifact content: Summary (text), Dependencies (tabs: Diagram + Plotly graph), Infrastructure (3-col resource cards), Modernization (see below), Kubernetes (manifest selector + code), Terraform (HCL code block), Cost (metrics + dataframe + savings tips)
-- Modernization view is identical in both the artifact modal (`workflow_visualizer.py`) and the Generated Infrastructure page (`architecture_view.py`): bullet-pointed Current State (red ●) vs Target State (green ●) side-by-side panels, Migration Roadmap phase cards with activities, expandable Recommendations, Quick Wins list
+- Modernization view is identical in both the artifact modal (`workflow_visualizer.py`) and the Migration Blueprint page (`architecture_view.py`): bullet-pointed Current State (red ●) vs Target State (green ●) side-by-side panels, Migration Roadmap phase cards with activities, expandable Recommendations, Quick Wins list
 
 ### Q&A Page
 - Scroll-to-top JS injected after each answer so user reads from the beginning
