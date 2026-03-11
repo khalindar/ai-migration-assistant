@@ -106,5 +106,5 @@ Return only valid JSON, no markdown."""
 
     log_queue.put(make_log("AI", f"Generated {rec_count} recommendations · {phase_count} migration phases", "info"))
     log_queue.put(make_log("AI", f"Timeline: {data.get('estimated_timeline', 'TBD')}", "info"))
-    log_queue.put(make_log("AI", "Modernization plan complete ✔", "success"))
+    log_queue.put(make_log("AI", "Migration Plan complete ✔", "success"))
     return state

@@ -21,7 +21,7 @@ ARTIFACT_LABELS = {
     "summarize":      "Architecture Summary",
     "dependencies":   "Dependency Graph & Architecture Diagram",
     "infrastructure": "Infrastructure Plan",
-    "modernization":  "Modernization Plan",
+    "modernization":  "Migration Plan",
     "kubernetes":     "Kubernetes Manifests",
     "terraform":      "Terraform Code",
     "cost":           "Cost Estimation Breakdown",
